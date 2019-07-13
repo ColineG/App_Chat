@@ -6,30 +6,38 @@ Created on Sat Jun 29 11:08:53 2019
 
 @author: Coco
 """
-from flask import Flask
-
-#from flask_mysqldb import MySQL
+#utilisation de Flask comme API pour relier l'app avec la BDD
+from flask import Flask, render_template, request
+import MySQLdb
 
 app = Flask(__name__)
 
-#app.config['MYSQL_HOST'] = 'localhost'
-#app.config['MYSQL_USER'] = 'Coline'
-#app.config['MYSQL_PASSWORD'] = 'password'
-#app.config['MYSQL_DB'] = 'chat'
-
-import MySQLdb
 mysql = MySQLdb.connect(host='localhost',
                       user='Coline',
                       passwd='password',
                       db='chat')
 
 
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
 def index():
-    return "Hello Nuclear Geeks"
+    return render_template("newuser.html")
 
+@app.route('/addUser', methods=['GET', 'POST'])
+def create_user():
+    if request.method == 'POST':
+        result = request.form
+        cur = mysql.cursor()
+        query = f'''
+        INSERT INTO users (user_name, email, user_pwd) 
+        VALUES ("{result['myPseudo']}", "{result['mail']}", "{result['mdp']}") 
+        '''
+        cur.execute(query)
+        mysql.commit()
+        #cur.fetchall()
+        return str(query)
+        
 
-@app.route('/user')
+@app.route('/usertest')
 def users():
     cur = mysql.cursor()
     cur.execute('''SELECT user_name FROM users;''')
@@ -39,12 +47,23 @@ def users():
 @app.route('/user/<int:user_id>')
 def get_user(user_id):
     cur = mysql.cursor()
-    cur.execute(f'''SELECT user_name FROM users WHERE user_id={user_id};''')
+    cur.execute(f'''SELECT * FROM users WHERE user_id={user_id};''')
     rv = cur.fetchall()
     return str(rv)
 
-#for users in chat('select * from users'):
-#    print(str(users['user_name'], 'has the id', users['user_id']))
+
+#create user old version
+'''@app.route('/create_user/<user_name>/<email>/<user_pwd>', methods=['GET', 'POST'])
+def create_user_old(user_name, email, user_pwd):
+    cur = mysql.cursor()
+    cur.execute('INSERT INTO users (user_name, email, user_pwd) VALUES ("%s", "%s", "%s") ' % (user_name, email, user_pwd))
+    mysql.commit()
+    rv = cur.fetchall()
+    return str(rv)'''
+
+
+
+
 
 
 if __name__ == '__main__':
