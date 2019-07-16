@@ -11,7 +11,10 @@ const baseHtml ='<!DOCTYPE html>' +
 '\n		<meta charset="UTF-8">' +
 '\n		<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
 '\n		<meta http-equiv="X-UA-Compatible" content="ie=edge">' +
-'\n		<title>Nouvel Utilisateur</title>' +
+'\n		<script>' +
+'\n			sessionStorage.setItem("userToken","ancdef56789");' +
+'\n		</script>' +
+'\n		<title>Bienvenu sur le forum</title>' +
 '\n		<link rel="stylesheet" type="text/css" href="bootstrap/css/bootstrap.min.css" media="all"/>' +
 '\n	</head>' +
 '\n	<body class="container">' +
@@ -22,17 +25,21 @@ const baseHtml ='<!DOCTYPE html>' +
 '\n		</footer>' +
 '\n	</body>' +
 '\n</html>';
+var userArray = [];
 var messagesArray = [];
 app.get('/', (req, res) => {
 	res.redirect(308, '/index.html');
 });
 app.post('/connect', (req, res) => {
+	var token = '';
 	let login = 'ressources/' + req.body.login + '.json';
 	let passWord = req.body.logMdp;
 	if(fs.existsSync(login)) {
 		console.log('Vous êtes connecté' + login);
 		let popotam = JSON.parse(fs.readFileSync(login).toString('utf8'));
 		if(passWord === popotam.mdp) {
+			token = new Date().getTime()+req.body.login.substring(0, 2);
+			userArray.push([req.body.login, token]);
 			console.log('Vous êtes connecté');
 		}
 		else {
@@ -42,15 +49,24 @@ app.post('/connect', (req, res) => {
 	else {
 		console.log("Ce login n'est pas pas enregistré sur le forum.");
 	}
-	res.redirect('/index.html');
+	res.redirect('/index.html' + token);
 });
 app.post('/message', (req, res) => {
 	let messagesFile = JSON.parse(fs.readFileSync('ressources/messages.json'));
-	messagesFile.push(req.body.messagePost)
+	var name = '';
+	userArray.forEach(function(mail){
+		if(mail[1] == req.body.tokhidden) {
+			name = mail[0];
+		}
+	});
+	console.log(name);
+	messagesFile.push(name + ' : ' + req.body.messagePost);
 	fs.writeFileSync('ressources/messages.json', JSON.stringify(messagesFile, null, 2), "utf8");
-	messagesArray.push(req.body.messagePost);
-	console.log('Le message à bien été enregistré.')
-	res.redirect('/index.html');
+	if(messagesArray.length >= 3){
+		messagesArray.shift();
+	}
+	messagesArray.push(name + ' : ' +  req.body.messagePost);
+	res.redirect('/index.html'+req.body.tokhidden);
 });
 app.get('/messages.html', (req, res) => {
 	let lesMail = '';
@@ -71,7 +87,11 @@ app.get('/messages.html', (req, res) => {
 	'\n	</body>' +
 	'\n</html>');
 });
-app.get('/index.html', (req, res) => {
+app.get('/index.html*', (req, res) => {
+	var token = req.params[0];
+	if(token.length<=0){
+		token = req.body.tokhidden;
+	}
 	let popotam = baseHtml;
 	let connect = false;
 	let supContent = '';
@@ -83,19 +103,18 @@ app.get('/index.html', (req, res) => {
 		'\n				<input type="text" name="logMdp" placeholder="Mot de passe">' +
 		'\n			</form>' +
 		'\n			<form action="/pseudo" method="post">' +
-		'\n				<input type="submit" value="S\'inscrire">' +
-		'\n				<input type="text" id="idPseudo" name="pseudoTest" placeholder="mathieu59" value="alain59">' +
+		'\n				<input type="submit" value="Pour vous inscrire : ">' +
+		'\n				<input type="text" id="idPseudo" name="pseudoTest" placeholder="choisissez un pseudo">' +
 		'\n			</form>' +
 		'\n		</header>';
 	}
-	let usersList = '\n		<aside>' +
+	let usersList = '';
+	userArray.forEach(function(online){
+		usersList += '\n<li>' + online[0] + ' est connecté.</li>';
+	});
+	usersList = '\n		<aside>' +
 		'\n		<ul>' +
-		'\n			<li>Alain78</li>' +
-		'\n			<li>Mathieu84</li>' +
-		'\n			<li>Coline75</li>' +
-		'\n			<li>Jocelin95</li>' +
-		'\n			<li>Stem91</li>' +
-		'\n			<li>Dimitri92</li>' +
+		usersList +
 		'\n		</ul>' +
 		'\n		</aside>';
 	popotam = popotam.toString('utf8');
@@ -108,11 +127,21 @@ app.get('/index.html', (req, res) => {
 	'\n			</iframe>' +
 	'\n			<form action="/message" method="post">' +
 	'\n				<textarea name="messagePost" placeholder="Écrivez un message..."></textarea>' +
+	'\n				<input type="hidden" name="tokhidden" value="' + token + '">' +
 	'\n				<input type="submit" value="Envoyer">' +
 	'\n			</form>' +
 	'\n		</main>' + usersList;
+	var name = '';
+	userArray.forEach(function(user){
+		if(user[1] == token) {
+			name = user[0];
+		}
+	});
 	popotam = popotam.replace('<body class="container">', uContent);
+	popotam = popotam.replace('Bienvenu sur le forum', name);
 	res.send(popotam);
+	//var loginTest = sessionStorage.login;
+	//console.log(loginTest);
 });
 app.post('/pseudo', (req, res) => {
 	var check = ['alain95', 'alain96', 'alain97'];

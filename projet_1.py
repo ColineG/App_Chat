@@ -20,7 +20,7 @@ mysql = MySQLdb.connect(host='localhost',
 
 @app.route('/')
 def index():
-    return render_template("newuser.html")
+    return render_template("server.js")
 
 @app.route('/addUser', methods=['GET', 'POST'])
 def create_user():
@@ -33,12 +33,25 @@ def create_user():
         '''
         cur.execute(query)
         mysql.commit()
-        #cur.fetchall()
+        return str(query)
+    
+@app.route('/deleteUser/<user_id>', methods=['GET', 'POST'])
+def delete_user(user_id):
+    if request.method == 'POST':
+        result = request.form
+        cur = mysql.cursor()
+        query = f'''
+        UPDATE users
+        SET user_status = REPLACE(user_status, '0', '1')
+        WHERE user_id={result['user_id']}
+        '''
+        cur.execute(query)
+        mysql.commit()
         return str(query)
         
 
 @app.route('/usertest')
-def users():
+def users(): 
     cur = mysql.cursor()
     cur.execute('''SELECT user_name FROM users;''')
     rv = cur.fetchall()
